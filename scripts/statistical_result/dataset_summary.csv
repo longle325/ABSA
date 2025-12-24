@@ -1,0 +1,14 @@
+Metric,Value
+Total Samples,11122
+Train Samples,7785
+Dev Samples,1112
+Test Samples,2225
+Total Annotations,35396
+Avg Annotations/Sample,3.18
+Samples with No Annotations,225
+Multi-label Samples,9168
+Avg Word Count,36.0
+Avg Char Count,158.3
+Positive Sentiment %,61.68%
+Negative Sentiment %,32.07%
+Neutral Sentiment %,6.25%
