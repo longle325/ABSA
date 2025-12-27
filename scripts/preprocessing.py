@@ -18,6 +18,13 @@ Output:
 - cleaned_data/cleaned_data.jsonl
 - cleaned_data/no_annotation_samples.jsonl
 - cleaned_data/preprocessing_report.json
+
+Usage for Inference/Demo:
+    >>> from preprocessing import preprocess_text
+    >>> raw = "Máy này quááááá tệ!!! hok dc sài @@@"
+    >>> cleaned = preprocess_text(raw)
+    >>> print(cleaned)
+    'Máy này quá tệ! không được xài'
 """
 
 import json
@@ -418,6 +425,42 @@ def process_sample(
 
     return processed, label_stats
 
+def preprocess_text(raw_text: str) -> str:
+    """
+    Preprocess a single raw text for inference/demo.
+
+    This function applies the same cleaning pipeline as the training data:
+    1. Remove URLs (https://...)
+    2. Remove emoji
+    3. Fix stuck words (đẹpNói -> đẹp Nói)
+    4. Normalize punctuation (... -> ., !!! -> !)
+    5. Remove special characters (@#$%^&* etc.)
+    6. Normalize repeated characters (quááááá -> quá)
+    7. Normalize teencode (hok -> không, dc -> được)
+    8. Normalize whitespace
+
+    Args:
+        raw_text: Raw input text (Vietnamese)
+
+    Returns:
+        Cleaned text ready for model inference
+
+    Example:
+        >>> from preprocessing import preprocess_text
+        >>> raw = "Máy này quááááá tệ!!! hok dc sài @@@"
+        >>> cleaned = preprocess_text(raw)
+        >>> print(cleaned)
+        'Máy này quá tệ! không được xài'
+    """
+    text = remove_urls(raw_text)
+    text = remove_emoji(text)
+    text = fix_stuck_words(text)
+    text = normalize_punctuation(text)
+    text = remove_special_chars(text)
+    text = normalize_repeated_chars(text)
+    text = normalize_teencode(text)
+    text = normalize_whitespace(text)
+    return text
 
 def main():
     """Main processing pipeline."""
