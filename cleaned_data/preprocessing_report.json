@@ -1,0 +1,28 @@
+{
+  "total_samples": 11122,
+  "with_annotations": 10862,
+  "without_annotations": 260,
+  "labels": {
+    "total": 35396,
+    "valid": 19584,
+    "adjusted": 15613,
+    "removed": 199
+  },
+  "per_split": {
+    "train": {
+      "total": 7785,
+      "with_annotations": 7597,
+      "without_annotations": 188
+    },
+    "dev": {
+      "total": 1112,
+      "with_annotations": 1082,
+      "without_annotations": 30
+    },
+    "test": {
+      "total": 2225,
+      "with_annotations": 2183,
+      "without_annotations": 42
+    }
+  }
+}
