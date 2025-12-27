@@ -49,7 +49,7 @@ def highlight_text(text: str, labels: List[List]) -> str:
     """
     if not labels:
         # No labels - just return the text in a styled div
-        return f'<div style="font-size:16px;line-height:2;padding:10px;">{html.escape(text)}</div>'
+        return f'<div style="font-size:16px;line-height:2;padding:15px;color:#e0e0e0;">{html.escape(text)}</div>'
 
     # Sort labels by start position (reverse to avoid index shifting when inserting HTML)
     sorted_labels = sorted(labels, key=lambda x: x[0], reverse=True)
@@ -104,9 +104,7 @@ def highlight_text(text: str, labels: List[List]) -> str:
         font-size:16px;
         line-height:2.2;
         padding:15px;
-        background:#fafafa;
-        border-radius:8px;
-        border:1px solid #eee;
+        color:#e0e0e0;
     ">
         {final_html}
     </div>
