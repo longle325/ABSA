@@ -189,6 +189,52 @@ def get_model_defaults(model_name: str) -> Dict[str, Any]:
                 'crf_lr': 1e-2,
                 'weight_decay': 0.01
             }
+        },
+        'bilstm_crf': {
+            # Paper hyperparameters (PACLIC 2021)
+            'model': {'name': 'bilstm-crf'},
+            'embeddings': {
+                'syllable_embed_dim': 100,   # Paper: 100
+                'char_embed_dim': 100,       # Paper: 100
+                'char_num_filters': 100,     # Paper: 100
+                'max_word_len': 20
+            },
+            'architecture': {
+                'lstm_hidden': 400,          # Paper: 400
+                'lstm_layers': 2,
+                'dropout': 0.33              # Paper: 0.33
+            },
+            'training': {
+                'epochs': 30,                # Paper: 30
+                'batch_size': 32,
+                'learning_rate': 0.001
+            }
+        },
+        'bilstm_crf_xlmr': {
+            # Paper hyperparameters (PACLIC 2021)
+            'model': {
+                'name': 'bilstm-crf-xlmr',
+                'xlmr_model_name': 'xlm-roberta-base'
+            },
+            'embeddings': {
+                'syllable_embed_dim': 100,   # Paper: 100
+                'char_embed_dim': 100,       # Paper: 100
+                'char_num_filters': 100,     # Paper: 100
+                'max_word_len': 20
+            },
+            'architecture': {
+                'lstm_hidden': 400,          # Paper: 400
+                'lstm_layers': 2,
+                'dropout': 0.33,             # Paper: 0.33
+                'freeze_xlmr': True
+            },
+            'training': {
+                'epochs': 30,                # Paper: 30
+                'batch_size': 16,
+                'learning_rate': 0.001,
+                'xlmr_lr': 2e-5,
+                'max_seq_len': 256
+            }
         }
     }
 
@@ -251,7 +297,7 @@ if __name__ == "__main__":
     print(f"  Random seed: {data_config['split']['random_seed']}")
 
     # Test model configs
-    for model_name in ['crf', 'logreg', 'svm', 'phobert']:
+    for model_name in ['crf', 'logreg', 'svm', 'phobert', 'bilstm_crf', 'bilstm_crf_xlmr']:
         config = load_model_config(model_name)
         print(f"\n{model_name.upper()} Config:")
         flat = flatten_config(config)

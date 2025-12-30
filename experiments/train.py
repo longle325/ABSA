@@ -200,6 +200,69 @@ def train_model(model_name: str, train_data, dev_data, test_data, model_config: 
         results = model.train(train_tokens, train_tags, dev_tokens, dev_tags)
         model.save(str(output_dir / 'phobert_model.pt'))
 
+    elif model_name == 'bilstm_crf':
+        try:
+            from src.models.bilstm_crf import BiLSTMCRFModel
+        except ImportError as e:
+            print(f"Error: Cannot import BiLSTM-CRF model: {e}")
+            return {'error': str(e)}, None, None
+
+        # Extract config with defaults
+        embeddings = model_config.get('embeddings', {})
+        architecture = model_config.get('architecture', {})
+        training = model_config.get('training', {})
+
+        config = {
+            'syllable_embed_dim': embeddings.get('syllable_embed_dim', 100),
+            'char_embed_dim': embeddings.get('char_embed_dim', 30),
+            'char_num_filters': embeddings.get('char_num_filters', 50),
+            'max_word_len': embeddings.get('max_word_len', 20),
+            'lstm_hidden': architecture.get('lstm_hidden', 256),
+            'lstm_layers': architecture.get('lstm_layers', 2),
+            'dropout': architecture.get('dropout', 0.5),
+            'epochs': training.get('epochs', 30),
+            'batch_size': training.get('batch_size', 32),
+            'learning_rate': training.get('learning_rate', 0.001)
+        }
+
+        model = BiLSTMCRFModel(config)
+        results = model.train(train_tokens, train_tags, dev_tokens, dev_tags)
+        model.save(str(output_dir / 'bilstm_crf_model.pkl'))
+
+    elif model_name == 'bilstm_crf_xlmr':
+        try:
+            from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
+        except ImportError as e:
+            print(f"Error: Cannot import BiLSTM-CRF-XLMR model: {e}")
+            return {'error': str(e)}, None, None
+
+        # Extract config with defaults
+        model_cfg = model_config.get('model', {})
+        embeddings = model_config.get('embeddings', {})
+        architecture = model_config.get('architecture', {})
+        training = model_config.get('training', {})
+
+        config = {
+            'xlmr_model_name': model_cfg.get('xlmr_model_name', 'xlm-roberta-base'),
+            'syllable_embed_dim': embeddings.get('syllable_embed_dim', 100),
+            'char_embed_dim': embeddings.get('char_embed_dim', 30),
+            'char_num_filters': embeddings.get('char_num_filters', 50),
+            'max_word_len': embeddings.get('max_word_len', 20),
+            'lstm_hidden': architecture.get('lstm_hidden', 256),
+            'lstm_layers': architecture.get('lstm_layers', 2),
+            'dropout': architecture.get('dropout', 0.5),
+            'freeze_xlmr': architecture.get('freeze_xlmr', True),
+            'epochs': training.get('epochs', 20),
+            'batch_size': training.get('batch_size', 16),
+            'learning_rate': training.get('learning_rate', 0.001),
+            'xlmr_lr': training.get('xlmr_lr', 2e-5),
+            'max_seq_len': training.get('max_seq_len', 256)
+        }
+
+        model = BiLSTMCRFXLMRModel(config)
+        results = model.train(train_tokens, train_tags, dev_tokens, dev_tags)
+        model.save(str(output_dir / 'bilstm_crf_xlmr_model.pkl'))
+
     else:
         raise ValueError(f"Unknown model: {model_name}")
 
@@ -223,7 +286,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train Vietnamese ABSA models')
 
     parser.add_argument('--model', type=str, required=True,
-                        choices=['crf', 'logreg', 'svm', 'phobert', 'all'],
+                        choices=['crf', 'logreg', 'svm', 'phobert', 'bilstm_crf', 'bilstm_crf_xlmr', 'all'],
                         help='Model to train')
     parser.add_argument('--data', type=str, default=None,
                         help='Path to data file (overrides config)')
@@ -277,7 +340,7 @@ def main():
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Train models
-    models_to_train = ['crf', 'logreg', 'svm', 'phobert'] if args.model == 'all' else [args.model]
+    models_to_train = ['crf', 'logreg', 'svm', 'bilstm_crf', 'bilstm_crf_xlmr', 'phobert'] if args.model == 'all' else [args.model]
     all_results = {}
 
     for model_name in models_to_train:

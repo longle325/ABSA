@@ -1,0 +1,30 @@
+# BiLSTM-CRF Model Configuration (Syllable + Character Embeddings)
+# ==================================================================
+# Hyperparameters from PACLIC 2021 paper
+
+model:
+  name: "bilstm-crf"
+
+# Embedding Settings (Paper: embedding dimension = 100)
+embeddings:
+  syllable_embed_dim: 100        # Syllable embedding dimension
+  char_embed_dim: 100            # Character embedding dimension (paper: 100)
+  char_num_filters: 100          # Number of filters per CNN kernel
+  max_word_len: 20               # Maximum word length for character CNN
+
+# Architecture Settings (Paper: hidden = 400, dropout = 0.33)
+architecture:
+  lstm_hidden: 400               # LSTM hidden size (paper: 400)
+  lstm_layers: 2                 # Number of BiLSTM layers
+  dropout: 0.33                  # Dropout rate (paper: 0.33)
+
+# Training Settings (Paper: batch = 5000, epochs = 30)
+training:
+  epochs: 30                     # Number of training epochs (paper: 30)
+  batch_size: 32                 # Batch size (sequences, not tokens)
+  learning_rate: 0.001           # Learning rate for Adam optimizer
+  early_stopping_patience: 5     # Early stopping patience
+
+# Device Settings
+device:
+  use_cuda: true                 # Use GPU if available

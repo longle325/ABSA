@@ -1,0 +1,36 @@
+# BiLSTM-CRF + XLM-RoBERTa Model Configuration
+# =============================================
+# Paper's best model: Syllable + Character + XLM-R contextual embeddings
+# Expected F1: ~62.76% (paper baseline)
+# Hyperparameters from PACLIC 2021 paper
+
+model:
+  name: "bilstm-crf-xlmr"
+  xlmr_model_name: "xlm-roberta-base"    # HuggingFace model name
+
+# Embedding Settings (Paper: embedding dimension = 100)
+embeddings:
+  syllable_embed_dim: 100        # Syllable embedding dimension
+  char_embed_dim: 100            # Character embedding dimension (paper: 100)
+  char_num_filters: 100          # Number of filters per CNN kernel
+  max_word_len: 20               # Maximum word length for character CNN
+
+# Architecture Settings (Paper: hidden = 400, dropout = 0.33)
+architecture:
+  lstm_hidden: 400               # LSTM hidden size (paper: 400)
+  lstm_layers: 2                 # Number of BiLSTM layers
+  dropout: 0.33                  # Dropout rate (paper: 0.33)
+  freeze_xlmr: true              # Freeze XLM-RoBERTa weights (faster training)
+
+# Training Settings (Paper: batch = 5000, epochs = 30)
+training:
+  epochs: 30                     # Number of training epochs (paper: 30)
+  batch_size: 16                 # Batch size (smaller due to XLM-R memory)
+  learning_rate: 0.001           # Learning rate for non-XLM-R parameters
+  xlmr_lr: 2.0e-5                # Learning rate for XLM-RoBERTa (if not frozen)
+  max_seq_len: 256               # Maximum sequence length
+  early_stopping_patience: 5     # Early stopping patience
+
+# Device Settings
+device:
+  use_cuda: true                 # Use GPU if available
