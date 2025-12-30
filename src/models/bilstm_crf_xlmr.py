@@ -155,6 +155,46 @@ def collate_fn_xlmr(batch):
     }
 
 
+def collate_fn_xlmr_nosort(batch):
+    """Collate function WITHOUT sorting - for prediction only.
+
+    Returns original indices so predictions can be reordered after decoding.
+    """
+    # Store original indices and sort for pack_padded_sequence
+    indexed_batch = [(i, item) for i, item in enumerate(batch)]
+    indexed_batch = sorted(indexed_batch, key=lambda x: x[1]['length'], reverse=True)
+    original_indices = [x[0] for x in indexed_batch]
+    sorted_batch = [x[1] for x in indexed_batch]
+
+    syllable_ids = [item['syllable_ids'] for item in sorted_batch]
+    char_ids = [item['char_ids'] for item in sorted_batch]
+    xlmr_input_ids = torch.stack([item['xlmr_input_ids'] for item in sorted_batch])
+    xlmr_attention_mask = torch.stack([item['xlmr_attention_mask'] for item in sorted_batch])
+    subword_indices = [item['subword_indices'] for item in sorted_batch]
+    lengths = [item['length'] for item in sorted_batch]
+
+    # Pad sequences
+    syllable_ids_padded = pad_sequence(syllable_ids, batch_first=True, padding_value=0)
+    subword_indices_padded = pad_sequence(subword_indices, batch_first=True, padding_value=0)
+
+    # Pad char_ids
+    max_seq_len = max(lengths)
+    max_word_len = char_ids[0].size(1)
+    char_ids_padded = torch.zeros(len(sorted_batch), max_seq_len, max_word_len, dtype=torch.long)
+    for i, chars in enumerate(char_ids):
+        char_ids_padded[i, :chars.size(0), :] = chars
+
+    return {
+        'syllable_ids': syllable_ids_padded,
+        'char_ids': char_ids_padded,
+        'xlmr_input_ids': xlmr_input_ids,
+        'xlmr_attention_mask': xlmr_attention_mask,
+        'subword_indices': subword_indices_padded,
+        'lengths': torch.tensor(lengths, dtype=torch.long),
+        'original_indices': original_indices
+    }
+
+
 class CharCNN(nn.Module):
     """Character-level CNN for word representation."""
 
@@ -619,11 +659,14 @@ class BiLSTMCRFXLMRModel:
             max_word_len=self.max_word_len,
             max_seq_len=self.max_seq_len
         )
-        loader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=collate_fn_xlmr)
+        # Use collate_fn_xlmr_nosort to track original indices
+        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False,
+                           collate_fn=collate_fn_xlmr_nosort)
 
-        all_predictions = []
+        all_predictions = [None] * len(tokens)  # Pre-allocate for correct ordering
 
         with torch.no_grad():
+            batch_start_idx = 0
             for batch in loader:
                 syllable_ids = batch['syllable_ids'].to(self.device)
                 char_ids = batch['char_ids'].to(self.device)
@@ -631,15 +674,21 @@ class BiLSTMCRFXLMRModel:
                 xlmr_attention_mask = batch['xlmr_attention_mask'].to(self.device)
                 subword_indices = batch['subword_indices'].to(self.device)
                 lengths = batch['lengths']
+                original_indices = batch['original_indices']
 
                 predictions = self.model.decode(
                     syllable_ids, char_ids, xlmr_input_ids, xlmr_attention_mask,
                     subword_indices, lengths
                 )
 
-                for pred, length in zip(predictions, lengths):
+                # Restore original order using tracked indices
+                for i, (pred, length) in enumerate(zip(predictions, lengths)):
                     pred_tags = [self.id2label[p] for p in pred[:length]]
-                    all_predictions.append(pred_tags)
+                    # Map back to original position in the batch
+                    original_idx = batch_start_idx + original_indices[i]
+                    all_predictions[original_idx] = pred_tags
+
+                batch_start_idx += len(original_indices)
 
         return all_predictions
 

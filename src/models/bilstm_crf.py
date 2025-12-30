@@ -107,6 +107,39 @@ def collate_fn(batch):
     }
 
 
+def collate_fn_nosort(batch):
+    """Collate function WITHOUT sorting - for prediction only.
+
+    Returns original indices so predictions can be reordered after decoding.
+    """
+    # Store original indices and sort for pack_padded_sequence
+    indexed_batch = [(i, item) for i, item in enumerate(batch)]
+    indexed_batch = sorted(indexed_batch, key=lambda x: x[1]['length'], reverse=True)
+    original_indices = [x[0] for x in indexed_batch]
+    sorted_batch = [x[1] for x in indexed_batch]
+
+    syllable_ids = [item['syllable_ids'] for item in sorted_batch]
+    char_ids = [item['char_ids'] for item in sorted_batch]
+    lengths = [item['length'] for item in sorted_batch]
+
+    # Pad sequences
+    syllable_ids_padded = pad_sequence(syllable_ids, batch_first=True, padding_value=0)
+
+    # Pad char_ids (batch_size, max_seq_len, max_word_len)
+    max_seq_len = max(lengths)
+    max_word_len = char_ids[0].size(1)
+    char_ids_padded = torch.zeros(len(sorted_batch), max_seq_len, max_word_len, dtype=torch.long)
+    for i, chars in enumerate(char_ids):
+        char_ids_padded[i, :chars.size(0), :] = chars
+
+    return {
+        'syllable_ids': syllable_ids_padded,
+        'char_ids': char_ids_padded,
+        'lengths': torch.tensor(lengths, dtype=torch.long),
+        'original_indices': original_indices
+    }
+
+
 class CharCNN(nn.Module):
     """Character-level CNN for word representation."""
 
@@ -500,21 +533,30 @@ class BiLSTMCRFModel:
             self.syllable2id, self.char2id, self.label2id,
             max_word_len=self.max_word_len
         )
-        loader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=collate_fn)
+        # Use collate_fn_nosort to track original indices
+        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False,
+                           collate_fn=collate_fn_nosort)
 
-        all_predictions = []
+        all_predictions = [None] * len(tokens)  # Pre-allocate for correct ordering
 
         with torch.no_grad():
+            batch_start_idx = 0
             for batch in loader:
                 syllable_ids = batch['syllable_ids'].to(self.device)
                 char_ids = batch['char_ids'].to(self.device)
                 lengths = batch['lengths']
+                original_indices = batch['original_indices']
 
                 predictions = self.model.decode(syllable_ids, char_ids, lengths)
 
-                for pred, length in zip(predictions, lengths):
+                # Restore original order using tracked indices
+                for i, (pred, length) in enumerate(zip(predictions, lengths)):
                     pred_tags = [self.id2label[p] for p in pred[:length]]
-                    all_predictions.append(pred_tags)
+                    # Map back to original position in the batch
+                    original_idx = batch_start_idx + original_indices[i]
+                    all_predictions[original_idx] = pred_tags
+
+                batch_start_idx += len(original_indices)
 
         return all_predictions
 
