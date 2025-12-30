@@ -1,0 +1,14 @@
+
+numpy>=2.1.0
+pandas>=2.2.3
+scikit-learn>=1.5.2
+underthesea>=8.3.0
+sklearn-crfsuite>=0.3.6
+seqeval>=1.2.2
+torch>=2.5.1
+transformers>=4.46.0
+pytorch-crf>=0.7.2
+pyyaml>=6.0.2
+tqdm>=4.66.5
+jsonlines>=4.0.0
+gradio>=4.0.0

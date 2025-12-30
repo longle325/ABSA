@@ -1,0 +1,31 @@
+# Data Configuration for Vietnamese ABSA
+# =====================================
+
+# Data paths
+data:
+  path: "cleaned_data/cleaned_data.jsonl"
+  # Alternative paths (uncomment to use)
+  # path: "UIT-ViSD4SA/data/train.jsonl"
+
+# Train/Test Split Settings
+split:
+  train_size: 0.8      # 80% for training
+  test_size: 0.2       # 20% for testing
+  dev_size: 0.0        # Set > 0 for train/dev/test split (e.g., 0.1)
+  random_seed: 42      # For reproducibility
+  shuffle: true        # Shuffle before splitting
+  stratify: false      # Stratified split (not implemented yet)
+
+# Preprocessing Settings
+preprocessing:
+  use_simple_tokenizer: false   # true = whitespace, false = underthesea
+  max_seq_length: 256           # Max sequence length for deep learning models
+  lowercase: false              # Convert to lowercase
+  remove_punctuation: false     # Remove punctuation
+
+# Output Settings
+output:
+  model_dir: "outputs/models"
+  log_dir: "outputs/logs"
+  predictions_dir: "outputs/predictions"
+  save_predictions: true

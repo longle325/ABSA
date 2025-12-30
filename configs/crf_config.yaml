@@ -1,0 +1,31 @@
+# CRF Model Configuration
+# =======================
+
+model:
+  name: "crf"
+  description: "Conditional Random Fields for sequence labeling"
+
+# CRF Hyperparameters
+hyperparameters:
+  algorithm: "lbfgs"           # Options: lbfgs, l2sgd, ap, pa, arow
+  c1: 0.1                      # L1 regularization coefficient
+  c2: 0.1                      # L2 regularization coefficient
+  max_iterations: 200          # Maximum iterations for training
+  all_possible_transitions: true  # Include all possible label transitions
+
+# Feature Engineering Settings
+features:
+  context_window: 2            # Number of tokens before/after to consider
+  use_word_shape: true         # Include word shape features (isupper, istitle, etc.)
+  use_prefixes: true           # Include prefix features
+  use_suffixes: true           # Include suffix features
+  prefix_lengths: [1, 2, 3]    # Prefix character lengths
+  suffix_lengths: [1, 2, 3]    # Suffix character lengths
+  use_ngrams: true             # Include n-gram features
+  use_position: true           # Include position features
+
+# Training Settings
+training:
+  verbose: true                # Print training progress
+  show_top_features: 10        # Number of top features to display after training
+  show_top_transitions: 10     # Number of top transitions to display
