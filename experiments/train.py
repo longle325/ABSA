@@ -117,12 +117,15 @@ def train_model(model_name: str, train_data, dev_data, test_data, model_config: 
     if model_name == 'crf':
         from src.models.crf_model import CRFModel
 
-        # Extract config for model
+        # Extract config with defaults
+        features = model_config.get('features', {})
+        hyperparams = model_config.get('hyperparameters', {})
+
         config = {
-            'c1': model_config['hyperparameters']['c1'],
-            'c2': model_config['hyperparameters']['c2'],
-            'max_iterations': model_config['hyperparameters']['max_iterations'],
-            'context_window': model_config['features']['context_window']
+            'c1': hyperparams.get('c1', 0.1),
+            'c2': hyperparams.get('c2', 0.1),
+            'max_iterations': hyperparams.get('max_iterations', 200),
+            'context_window': features.get('context_window', 2)
         }
 
         model = CRFModel(config)
@@ -132,12 +135,17 @@ def train_model(model_name: str, train_data, dev_data, test_data, model_config: 
     elif model_name == 'logreg':
         from src.models.logreg_model import LogRegModel
 
+        # Extract config with defaults
+        features = model_config.get('features', {})
+        hyperparams = model_config.get('hyperparameters', {})
+        ngram = features.get('ngram_range', [1, 2])
+
         config = {
-            'max_features': model_config['features']['max_features'],
-            'ngram_range': tuple(model_config['features']['ngram_range']),
-            'context_window': model_config['features']['context_window'],
-            'C': model_config['hyperparameters']['C'],
-            'max_iter': model_config['hyperparameters']['max_iter']
+            'max_features': features.get('max_features', 10000),
+            'ngram_range': tuple(ngram) if isinstance(ngram, list) else ngram,
+            'context_window': features.get('context_window', 2),
+            'C': hyperparams.get('C', 1.0),
+            'max_iter': hyperparams.get('max_iter', 1000)
         }
 
         model = LogRegModel(config)
@@ -147,13 +155,18 @@ def train_model(model_name: str, train_data, dev_data, test_data, model_config: 
     elif model_name == 'svm':
         from src.models.svm_model import SVMModel
 
+        # Extract config with defaults
+        features = model_config.get('features', {})
+        hyperparams = model_config.get('hyperparameters', {})
+        ngram = features.get('ngram_range', [1, 3])
+
         config = {
-            'max_features': model_config['features']['max_features'],
-            'ngram_range': tuple(model_config['features']['ngram_range']),
-            'context_window': model_config['features']['context_window'],
-            'kernel': model_config['hyperparameters']['kernel'],
-            'C': model_config['hyperparameters']['C'],
-            'gamma': model_config['hyperparameters']['gamma']
+            'max_features': features.get('max_features', 15000),
+            'ngram_range': tuple(ngram) if isinstance(ngram, list) else ngram,
+            'context_window': features.get('context_window', 3),
+            'kernel': hyperparams.get('kernel', 'linear'),
+            'C': hyperparams.get('C', 1.0),
+            'gamma': hyperparams.get('gamma', 'scale')
         }
 
         model = SVMModel(config)
@@ -282,7 +295,7 @@ def main():
         all_results[model_name] = results
 
         # Print detailed report for last model
-        if predictions and test_tags:
+        if predictions is not None and len(predictions) > 0:
             print("\nDetailed Classification Report:")
             print_evaluation_report(test_tags, predictions)
 

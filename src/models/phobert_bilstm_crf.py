@@ -234,8 +234,8 @@ class PhoBERTModel:
         self.gradient_clip = self.config.get('gradient_clip', 1.0)
         self.warmup_ratio = self.config.get('warmup_ratio', 0.1)
 
-        # Initialize tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model)
+        # Initialize tokenizer (use_fast=True required for word_ids())
+        self.tokenizer = AutoTokenizer.from_pretrained(self.pretrained_model, use_fast=True)
 
         # Model and label mappings (set during training)
         self.model = None

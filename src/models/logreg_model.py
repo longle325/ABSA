@@ -54,7 +54,6 @@ class LogRegModel(BaseABSAModel):
         self.classifier = LogisticRegression(
             C=self.C,
             max_iter=self.max_iter,
-            multi_class='multinomial',
             solver='lbfgs',
             n_jobs=-1,
             random_state=42
