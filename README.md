@@ -428,11 +428,6 @@ Expected performance on the UIT-ViSD4SA test set:
 | BiLSTM-CRF | ~0.58 | ~0.60 | ~0.59 | 2-3 hours |
 | BiLSTM-CRF-XLMR | ~0.61 | ~0.64 | ~0.63 | 4-6 hours |
 
-**Note**: Performance values are approximate and based on configuration settings from the PACLIC 2021 paper. Actual results may vary depending on:
-- Random seed
-- Hardware specifications
-- Data preprocessing variations
-- Hyperparameter tuning
 
 ### Performance Factors
 
@@ -608,17 +603,6 @@ for tokens, preds in zip(test_tokens[:5], predictions[:5]):
     print("-" * 60)
 ```
 
-## Citation
-
-If you use this code or the UIT-ViSD4SA dataset in your research, please cite:
-
-```bibtex
-@inproceedings{uitvisd4sa2021,
-  title={UIT-ViSD4SA: Vietnamese Smartphone Reviews Dataset for Aspect-Based Sentiment Analysis},
-  booktitle={Proceedings of the 35th Pacific Asia Conference on Language, Information and Computation (PACLIC)},
-  year={2021}
-}
-```
 
 ### Methodology Reference
 
@@ -662,9 +646,6 @@ ls outputs/models/
 demo.launch(server_port=7861)  # Use different port
 ```
 
-## Contributing
-
-This is a research project. For questions or issues, please review the code documentation and configuration files.
 
 ## Acknowledgments
 
