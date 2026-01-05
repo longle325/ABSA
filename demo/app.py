@@ -19,39 +19,56 @@ import gradio as gr
 from scripts.preprocessing import preprocess_text
 from data_loader import lookup_text, get_sample_texts
 from utils import highlight_text, format_labels
+from model_manager import get_model_manager
+from inference import inference_with_fallback, map_labels_to_raw_text
+
+# Global mapping from display name to model file
+model_name_to_file = {}
 
 
-def process(raw_text: str):
+def process(raw_text: str, selected_model_display: str):
     """
-    Main processing function.
+    Main processing function with model inference.
 
     Args:
         raw_text: Raw input text from user
+        selected_model_display: Selected model display name from dropdown
 
     Returns:
-        Tuple of (cleaned_text, highlighted_html, labels_str)
+        Tuple of (highlighted_html, labels_str)
     """
     if not raw_text or not raw_text.strip():
-        return "", "<div style='color:#888;'>Please enter some text</div>", "", ""
+        return "<div style='color:#888;'>Please enter some text</div>", ""
 
-    # Step 1: Preprocess the text
-    cleaned = preprocess_text(raw_text)
+    # Get model manager
+    manager = get_model_manager()
 
-    # Step 2: Lookup in dataset
-    result = lookup_text(cleaned)
+    # Get actual model filename from display name
+    model_file = model_name_to_file.get(selected_model_display)
 
-    if result:
-        labels = result["labels"]
-    else:
-        labels = []
+    # Get model from cache (already pre-loaded)
+    model = manager.get_current_model()
+    if model_file:
+        try:
+            model = manager.load_model(model_file)
+        except Exception as e:
+            return f"<div style='color:#cc0000;'>Error loading model</div>", ""
 
-    # Step 3: Create highlighted HTML
-    highlighted = highlight_text(cleaned, labels)
+    # Smart inference with fallback (dataset lookup first, then model)
+    cleaned, labels_on_cleaned, source = inference_with_fallback(
+        raw_text, model, lookup_text
+    )
 
-    # Step 4: Format labels for display
-    labels_str = format_labels(labels)
+    # Map labels from cleaned text back to raw text positions
+    labels_on_raw = map_labels_to_raw_text(raw_text, cleaned, labels_on_cleaned)
 
-    return cleaned, highlighted, labels_str
+    # Create highlighted HTML on RAW text
+    highlighted = highlight_text(raw_text, labels_on_raw)
+
+    # Format labels for display
+    labels_str = format_labels(labels_on_raw)
+
+    return highlighted, labels_str
 
 
 def load_example(example_text: str):
@@ -62,6 +79,43 @@ def load_example(example_text: str):
 # =============================================================================
 # GRADIO INTERFACE
 # =============================================================================
+
+# Initialize model manager and pre-load models
+print("=" * 60)
+print("Initializing Vietnamese ABSA Demo...")
+print("=" * 60)
+
+manager = get_model_manager()
+available_models = manager.get_available_models()
+
+print(f"Found {len(available_models)} models:")
+for model in available_models:
+    print(f"  - {model['name']} ({model['type']})")
+
+# Pre-load first 2 models only
+print("\nPre-loading models...")
+model_files = ['bilstm_crf_model.pkl', 'bilstm_crf_xlmr_model.pkl']
+for i, model_file in enumerate(model_files):
+    try:
+        print(f"  Loading {model_file}...")
+        manager.load_model(model_file)
+        print(f"  ✓ {model_file} loaded")
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+
+print("\n✓ Models ready!")
+print("=" * 60)
+
+# Create model choices for dropdown with mapping
+model_choices = []
+model_name_to_file = {}
+
+for model_file, model_info in zip(model_files, available_models[:2]):
+    display_name = f"{model_info['name']} ({model_info['type']})"
+    model_choices.append(display_name)
+    model_name_to_file[display_name] = model_file
+
+default_model = model_choices[0] if model_choices else None
 
 # Get sample texts for examples
 sample_texts = get_sample_texts(5)
@@ -80,40 +134,53 @@ with gr.Blocks(
     theme=gr.themes.Soft()
 ) as demo:
 
+    gr.Markdown("# Vietnamese Aspect-Based Sentiment Analysis")
+    gr.Markdown("Analyze Vietnamese reviews for aspect-based sentiment")
+
+    # Model Selection
+    with gr.Row():
+        model_dropdown = gr.Dropdown(
+            choices=model_choices,
+            value=default_model,
+            label="Select Model",
+            info=f"Choose from {len(model_choices)} pre-loaded models"
+        )
+
+    gr.Markdown("---")
 
     # Input Section
     with gr.Row():
         input_text = gr.Textbox(
-            label="Input (Raw Text)",
+            label="Input",
             placeholder="Nhập text tiếng Việt tại đây...\nVí dụ: Máy đẹp, sang, pin trâu, camera chụp tốt.",
-            lines=4,
+            lines=5,
             max_lines=10
         )
 
-    # Generate Button
+    # Buttons - centered
     with gr.Row():
-        btn = gr.Button("Generate", variant="primary", size="lg")
-        clear_btn = gr.Button("Clear", variant="secondary", size="lg")
-
-    # Preprocessed Text
-    with gr.Row():
-        cleaned_text = gr.Textbox(
-            label="Preprocessed Text",
-            lines=2,
-            interactive=False
-        )
-
-    # Output Section
-    with gr.Row():
+        with gr.Column(scale=1):
+            pass
         with gr.Column(scale=2):
-            gr.Markdown("### Output (Highlighted)")
+            with gr.Row():
+                btn = gr.Button("Analyze", variant="primary", size="lg")
+                clear_btn = gr.Button("Clear", variant="secondary", size="lg")
+        with gr.Column(scale=1):
+            pass
+
+    # Output Section - 65% output, 35% labels
+    with gr.Row():
+        with gr.Column(scale=65):
+            gr.Markdown("### Output")
             output_html = gr.HTML()
 
-        with gr.Column(scale=1):
+        with gr.Column(scale=35):
+            gr.Markdown("### Labels")
             labels_text = gr.Textbox(
-                label="Labels",
-                lines=8,
-                interactive=False
+                label="",
+                lines=12,
+                interactive=False,
+                show_label=False
             )
 
     # Examples Section
@@ -133,20 +200,20 @@ with gr.Blocks(
     # Event handlers
     btn.click(
         fn=process,
-        inputs=input_text,
-        outputs=[cleaned_text, output_html, labels_text]
+        inputs=[input_text, model_dropdown],
+        outputs=[output_html, labels_text]
     )
 
     clear_btn.click(
-        fn=lambda: ("", "", "", ""),
-        outputs=[input_text, cleaned_text, labels_text]
+        fn=lambda: ("", ""),
+        outputs=[input_text, labels_text]
     )
 
     # Also trigger on Enter key in input
     input_text.submit(
         fn=process,
-        inputs=input_text,
-        outputs=[cleaned_text, output_html, labels_text]
+        inputs=[input_text, model_dropdown],
+        outputs=[output_html, labels_text]
     )
 
 
