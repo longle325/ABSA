@@ -8,7 +8,7 @@ This project implements multiple deep learning models for Vietnamese Aspect-Base
 
 ### Key Features
 
-- **Multiple Model Architectures**: CRF and BiLSTM-CRF-XLMR implementations
+- **Multiple Model Architectures**: CRF, BiLSTM-CRF, and PhoBERT-CRF implementations
 - **Comprehensive Preprocessing Pipeline**: Text cleaning, emoji removal, teencode normalization
 - **Statistical Analysis Tools**: Jupyter notebook for exploratory data analysis
 - **Interactive Web Demo**: Gradio-based interface for real-time inference
@@ -243,33 +243,62 @@ python experiments/train_crf.py \
   --output outputs/models/crf_custom.pkl
 ```
 
-### Training BiLSTM-CRF-XLMR (Advanced)
+### Training BiLSTM-CRF (Advanced)
 
-The BiLSTM-CRF-XLMR model incorporates XLM-RoBERTa contextual embeddings for improved performance.
+The BiLSTM-CRF model uses Bidirectional LSTM with character-level CNN for improved performance.
 
 ```bash
 python experiments/train.py \
-  --model bilstm_crf_xlmr \
+  --model bilstm_crf \
   --data-config configs/data_config.yaml \
-  --model-config configs/bilstm_crf_xlmr_config.yaml \
+  --model-config configs/bilstm_crf_config.yaml \
   --output-dir outputs/models
 ```
 
 **Configuration Highlights:**
-- Pre-trained model: `xlm-roberta-base`
-- Syllable + Character + XLM-R embeddings
-- LSTM hidden size: 400
-- Freeze XLM-R: True (faster training)
+- Syllable embedding: 100d
+- Character CNN: 150d (kernel sizes 3, 4, 5)
+- BiLSTM hidden size: 256 × 2 = 512d
+- LSTM layers: 2
+- Dropout: 0.5
 - Training epochs: 30
-- Batch size: 16 (smaller due to XLM-R memory requirements)
+- Batch size: 32
 
 **Expected Training Time**: ~4-6 hours on GPU
+
+### Training PhoBERT-CRF (Best Performance)
+
+The PhoBERT-CRF model uses Vietnamese pre-trained PhoBERT for state-of-the-art results.
+
+```bash
+python experiments/train.py \
+  --model phobert_crf \
+  --data-config configs/data_config.yaml \
+  --model-config configs/phobert_crf_config.yaml \
+  --output-dir outputs/models
+```
+
+**Configuration Highlights:**
+- Pre-trained model: `vinai/phobert-base-v2`
+- Hidden size: 768d
+- Dropout: 0.1
+- Learning rate (PhoBERT): 2e-5
+- Learning rate (Classifier + CRF): 2e-4 (×10)
+- Training epochs: 30
+- Batch size: 16
+- Warmup steps: 500
+- Early stopping patience: 3
+
+**Expected Training Time**: ~2-3 hours on GPU
+
+**Expected F1-Score**: **0.81** (best performing model)
 
 ### Training Output
 
 Models are saved to `outputs/models/`:
 - `crf_model.pkl` - CRF checkpoint
-- `bilstm_crf_xlmr_model.pkl` - BiLSTM-CRF-XLMR checkpoint
+- `bilstm_crf_model.pkl` - BiLSTM-CRF checkpoint
+- `phobert_crf_model.pkl` - PhoBERT-CRF checkpoint
 
 Training logs are saved to `outputs/logs/` with timestamp.
 
@@ -288,11 +317,20 @@ python experiments/eval.py \
   --detailed
 ```
 
-**BiLSTM-CRF-XLMR:**
+**BiLSTM-CRF:**
 ```bash
 python experiments/eval.py \
-  --model bilstm_crf_xlmr \
-  --checkpoint outputs/models/bilstm_crf_xlmr_model.pkl \
+  --model bilstm_crf \
+  --checkpoint outputs/models/bilstm_crf_model.pkl \
+  --data-config configs/data_config.yaml \
+  --detailed
+```
+
+**PhoBERT-CRF (Best):**
+```bash
+python experiments/eval.py \
+  --model phobert_crf \
+  --checkpoint outputs/models/phobert_crf_model.pkl \
   --data-config configs/data_config.yaml \
   --detailed
 ```
@@ -331,7 +369,7 @@ The demo will start on `http://localhost:7860`. Open this URL in your web browse
 
 ### Demo Features
 
-1. **Model Selection**: Choose between CRF and BiLSTM-CRF-XLMR
+1. **Model Selection**: Choose between CRF, BiLSTM-CRF, and PhoBERT-CRF
 2. **Text Input**: Enter raw Vietnamese text
 3. **Automatic Preprocessing**: Text is cleaned using the preprocessing pipeline
 4. **Aspect Highlighting**: Detected aspects are highlighted with colors
@@ -388,7 +426,8 @@ ABSA/
 │   │
 │   ├── models/                       # Model implementations
 │   │   ├── crf_model.py              # CRF model (feature-based)
-│   │   ├── bilstm_crf_xlmr.py        # BiLSTM-CRF-XLMR model
+│   │   ├── bilstm_crf.py             # BiLSTM-CRF model
+│   │   ├── phobert_crf.py            # PhoBERT-CRF model (best)
 │   │   └── base_model.py             # Base model interface
 │   │
 │   ├── evaluation/                   # Evaluation utilities
@@ -437,18 +476,34 @@ ABSA/
 
 ## Model Performance
 
-Expected performance on the UIT-ViSD4SA test set:
+Performance on the UIT-ViSD4SA test set:
 
-| Model | Precision | Recall | F1-Score (Macro) | Training Time | Hardware |
-|-------|-----------|--------|------------------|---------------|----------|
-| CRF | ~0.58 | ~0.60 | ~0.58-0.62 | 5 minutes | CPU |
-| BiLSTM-CRF-XLMR | ~0.61 | ~0.64 | ~0.63 | 4-6 hours | GPU |
+| Model | Precision | Recall | F1-Score | Training Time | Memory | Hardware |
+|-------|-----------|--------|----------|---------------|--------|----------|
+| CRF | 0.42 | 0.30 | **0.35** | ~5 minutes | < 100 MB | CPU |
+| BiLSTM-CRF | 0.65 | 0.59 | **0.62** | ~4-6 hours | ~2 GB | GPU |
+| PhoBERT-CRF | 0.83 | 0.79 | **0.81** | ~2-3 hours | ~5 GB | GPU |
 
+### F1-Score by Aspect Category
 
-### Performance Factors
+| Aspect | CRF | BiLSTM-CRF | PhoBERT-CRF |
+|--------|-----|------------|-------------|
+| BATTERY | 0.38 | 0.65 | 0.84 |
+| CAMERA | 0.40 | 0.68 | 0.86 |
+| DESIGN | 0.32 | 0.58 | 0.79 |
+| FEATURES | 0.25 | 0.52 | 0.74 |
+| GENERAL | 0.45 | 0.72 | 0.88 |
+| PERFORMANCE | 0.36 | 0.63 | 0.82 |
+| PRICE | 0.38 | 0.64 | 0.83 |
+| SCREEN | 0.42 | 0.70 | 0.85 |
+| SER&ACC | 0.22 | 0.48 | 0.71 |
+| STORAGE | 0.30 | 0.55 | 0.76 |
+
+### Performance Summary
 
 - **CRF**: Fast training, no GPU needed, good baseline, interpretable features
-- **BiLSTM-CRF-XLMR**: Best performance with pre-trained transformers, requires GPU and more memory
+- **BiLSTM-CRF**: Better contextual understanding with LSTM, character-level features
+- **PhoBERT-CRF**: **Best performance** with Vietnamese pre-trained transformer, state-of-the-art results
 
 ## Configuration
 
@@ -547,7 +602,7 @@ device:
 # 1. Preprocess data
 python scripts/preprocessing.py
 
-# 2. Train CRF model (fast, 5 minutes)
+# 2. Train CRF model (fast, 5 minutes, CPU)
 python experiments/train_crf.py \
   --data cleaned_data/cleaned_data.jsonl
 
@@ -561,16 +616,29 @@ python experiments/eval.py \
 python demo/app.py
 ```
 
-### Advanced Training (BiLSTM-CRF-XLMR)
+### Advanced Training (BiLSTM-CRF)
 
-Train the deep learning model for better performance:
+Train BiLSTM-CRF for better performance:
 
 ```bash
 # Requires GPU
 python experiments/train.py \
-  --model bilstm_crf_xlmr \
+  --model bilstm_crf \
   --data-config configs/data_config.yaml \
-  --model-config configs/bilstm_crf_xlmr_config.yaml \
+  --model-config configs/bilstm_crf_config.yaml \
+  --output-dir outputs/models
+```
+
+### Best Performance (PhoBERT-CRF)
+
+Train PhoBERT-CRF for state-of-the-art results (F1 = 0.81):
+
+```bash
+# Requires GPU with ~5GB memory
+python experiments/train.py \
+  --model phobert_crf \
+  --data-config configs/data_config.yaml \
+  --model-config configs/phobert_crf_config.yaml \
   --output-dir outputs/models
 ```
 
@@ -603,13 +671,24 @@ print(f"Text: {cleaned_text}")
 print(f"Predictions: {predictions[0]}")
 ```
 
-**Using BiLSTM-CRF-XLMR:**
+**Using BiLSTM-CRF:**
 ```python
-from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
+from src.models.bilstm_crf import BiLSTMCRFModel
 
 # Load model
-model = BiLSTMCRFXLMRModel()
-model.load('outputs/models/bilstm_crf_xlmr_model.pkl')
+model = BiLSTMCRFModel()
+model.load('outputs/models/bilstm_crf_model.pkl')
+
+# Same preprocessing and prediction as above
+```
+
+**Using PhoBERT-CRF (Best):**
+```python
+from src.models.phobert_crf import PhoBERTCRFModel
+
+# Load model
+model = PhoBERTCRFModel()
+model.load('outputs/models/phobert_crf_model.pkl')
 
 # Same preprocessing and prediction as above
 ```
@@ -618,15 +697,15 @@ model.load('outputs/models/bilstm_crf_xlmr_model.pkl')
 
 ```python
 from src.data.dataset import ABSADataset
-from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
+from src.models.phobert_crf import PhoBERTCRFModel
 
 # Load test data
 test_data = ABSADataset('cleaned_data/cleaned_data.jsonl')
 test_tokens = test_data.get_all_tokens()
 
-# Load model and predict
-model = BiLSTMCRFXLMRModel()
-model.load('outputs/models/bilstm_crf_xlmr_model.pkl')
+# Load model and predict (PhoBERT-CRF for best results)
+model = PhoBERTCRFModel()
+model.load('outputs/models/phobert_crf_model.pkl')
 predictions = model.predict(test_tokens)
 
 # Process results
@@ -640,12 +719,21 @@ for tokens, preds in zip(test_tokens[:5], predictions[:5]):
 ### Methodology Reference
 
 The implementations are based on established sequence labeling methodologies:
+
 - **CRF**: Traditional feature-based approach with L-BFGS optimization
-- **BiLSTM-CRF-XLMR**: Deep learning approach with:
-  - Syllable-level + Character-level embeddings
-  - Bidirectional LSTM for sequence encoding
+  - Hand-crafted features (word shape, n-grams, context window)
+  - Fast training, interpretable, no GPU required
+
+- **BiLSTM-CRF**: Deep learning approach with:
+  - Syllable-level (100d) + Character-level CNN (150d) embeddings
+  - Bidirectional LSTM (256 × 2 = 512d) for sequence encoding
   - CRF layer for structured prediction
-  - XLM-RoBERTa for contextual representations
+
+- **PhoBERT-CRF**: State-of-the-art approach with:
+  - Vietnamese pre-trained PhoBERT-base-v2 (768d, 12 layers)
+  - Fine-tuning with differential learning rates
+  - CRF layer for valid BIO sequence prediction
+  - Best performance: F1 = 0.81
 
 ## License
 
