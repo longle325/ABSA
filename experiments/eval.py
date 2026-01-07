@@ -92,6 +92,11 @@ def load_model(model_name: str, checkpoint_path: str):
         model = BiLSTMCRFXLMRModel()
         model.load(checkpoint_path)
 
+    elif model_name == 'phobert_crf':
+        from src.models.phobert_crf import PhoBERTCRFModel
+        model = PhoBERTCRFModel()
+        model.load(checkpoint_path)
+
     elif model_name == 'phobert':
         from src.models.phobert_bilstm_crf import PhoBERTModel
         model = PhoBERTModel()
@@ -128,7 +133,7 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate Vietnamese ABSA models')
 
     parser.add_argument('--model', type=str, required=True,
-                        choices=['crf', 'logreg', 'svm', 'phobert', 'bilstm_crf', 'bilstm_crf_xlmr'],
+                        choices=['crf', 'logreg', 'svm', 'phobert', 'phobert_crf', 'bilstm_crf', 'bilstm_crf_xlmr'],
                         help='Model type to evaluate')
     parser.add_argument('--checkpoint', type=str, required=True,
                         help='Path to model checkpoint file')

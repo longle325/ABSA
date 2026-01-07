@@ -5,6 +5,7 @@ Manages loading, caching, and switching between trained models.
 
 Supports:
 - CRF models (Conditional Random Fields)
+- PhoBERT-CRF models (Vietnamese BERT + CRF)
 - BiLSTM-CRF-XLMR models (with XLM-RoBERTa)
 
 Features:
@@ -23,6 +24,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.models.crf_model import CRFModel
+from src.models.phobert_crf import PhoBERTCRFModel
 from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
 
 
@@ -68,6 +70,13 @@ class ModelManager:
                 'type': 'CRF'
             })
 
+        # Add PhoBERT-CRF model
+        models.append({
+                'name': 'PhoBERT-CRF',
+                'path': str(self.models_dir / 'phobert_crf_model.pkl'),
+                'type': 'PhoBERT-CRF'
+            })
+
         # Add BiLSTM-CRF-XLMR model
         models.append({
                 'name': 'BiLSTM-CRF-XLMR',
@@ -83,6 +92,9 @@ class ModelManager:
         # Check for XLM-R first (more specific)
         if 'xlmr' in filename_lower or 'xlm' in filename_lower:
             return 'BiLSTM-CRF-XLMR'
+        # Check for PhoBERT-CRF
+        elif 'phobert_crf' in filename_lower:
+            return 'PhoBERT-CRF'
         # Check for pure CRF model (crf_model.pkl)
         elif filename_lower.startswith('crf_model') or filename_lower == 'crf.pkl':
             return 'CRF'
@@ -125,6 +137,10 @@ class ModelManager:
             if model_type == 'CRF':
                 # CRF uses classmethod load()
                 model = CRFModel.load(str(model_path))
+            elif model_type == 'PhoBERT-CRF':
+                # PhoBERT-CRF uses instance method load()
+                model = PhoBERTCRFModel()
+                model.load(str(model_path))
             elif model_type == 'BiLSTM-CRF-XLMR':
                 # BiLSTM-CRF-XLMR uses instance method load()
                 model = BiLSTMCRFXLMRModel()

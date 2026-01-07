@@ -263,6 +263,34 @@ def train_model(model_name: str, train_data, dev_data, test_data, model_config: 
         results = model.train(train_tokens, train_tags, dev_tokens, dev_tags)
         model.save(str(output_dir / 'bilstm_crf_xlmr_model.pkl'))
 
+    elif model_name == 'phobert_crf':
+        try:
+            from src.models.phobert_crf import PhoBERTCRFModel
+        except ImportError as e:
+            print(f"Error: Cannot import PhoBERT-CRF model: {e}")
+            return {'error': str(e)}, None, None
+
+        # Extract config with defaults
+        model_cfg = model_config.get('model', {})
+        architecture = model_config.get('architecture', {})
+        training = model_config.get('training', {})
+
+        config = {
+            'phobert_model_name': model_cfg.get('phobert_model_name', 'vinai/phobert-base-v2'),
+            'dropout': architecture.get('dropout', 0.1),
+            'freeze_phobert': architecture.get('freeze_phobert', False),
+            'epochs': training.get('epochs', 10),
+            'batch_size': training.get('batch_size', 16),
+            'learning_rate': training.get('learning_rate', 2e-5),
+            'max_seq_len': training.get('max_seq_len', 256),
+            'warmup_steps': training.get('warmup_steps', 500),
+            'weight_decay': training.get('weight_decay', 0.01)
+        }
+
+        model = PhoBERTCRFModel(config)
+        results = model.train(train_tokens, train_tags, dev_tokens, dev_tags)
+        model.save(str(output_dir / 'phobert_crf_model.pkl'))
+
     else:
         raise ValueError(f"Unknown model: {model_name}")
 
@@ -286,7 +314,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train Vietnamese ABSA models')
 
     parser.add_argument('--model', type=str, required=True,
-                        choices=['crf', 'logreg', 'svm', 'phobert', 'bilstm_crf', 'bilstm_crf_xlmr', 'all'],
+                        choices=['crf', 'logreg', 'svm', 'phobert', 'phobert_crf', 'bilstm_crf', 'bilstm_crf_xlmr', 'all'],
                         help='Model to train')
     parser.add_argument('--data', type=str, default=None,
                         help='Path to data file (overrides config)')
@@ -340,7 +368,7 @@ def main():
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Train models
-    models_to_train = ['crf', 'logreg', 'svm', 'bilstm_crf', 'bilstm_crf_xlmr', 'phobert'] if args.model == 'all' else [args.model]
+    models_to_train = ['crf', 'logreg', 'svm', 'phobert_crf', 'bilstm_crf', 'bilstm_crf_xlmr', 'phobert'] if args.model == 'all' else [args.model]
     all_results = {}
 
     for model_name in models_to_train:

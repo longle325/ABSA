@@ -92,9 +92,9 @@ print(f"Found {len(available_models)} models:")
 for model in available_models:
     print(f"  - {model['name']} ({model['type']})")
 
-# Pre-load models: CRF and BiLSTM-CRF-XLMR
+# Pre-load models: CRF, PhoBERT-CRF, and BiLSTM-CRF-XLMR
 print("\nPre-loading models...")
-model_files = ['crf_model.pkl', 'bilstm_crf_xlmr_model.pkl']
+model_files = ['crf_model.pkl', 'phobert_crf_model.pkl', 'bilstm_crf_xlmr_model.pkl']
 for i, model_file in enumerate(model_files):
     try:
         print(f"  Loading {model_file}...")
