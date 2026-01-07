@@ -16,7 +16,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.data.dataset import ABSADataset, load_dataset, load_separate_datasets
+from src.data.dataset import ABSADataset, load_dataset_with_split
 from src.models.crf_model import CRFModel
 from src.evaluation.metrics import print_evaluation_report
 
@@ -55,7 +55,7 @@ def main():
     # Load data
     print("Loading data...")
     if args.data:
-        train_data, dev_data, test_data = load_dataset(args.data)
+        train_data, dev_data, test_data = load_dataset_with_split(args.data)
     elif args.train:
         train_data = ABSADataset(args.train, use_simple_tokenizer=args.use_simple_tokenizer)
         dev_data = ABSADataset(args.dev, use_simple_tokenizer=args.use_simple_tokenizer) if args.dev else None
@@ -64,7 +64,7 @@ def main():
         # Default path
         default_path = 'cleaned_data/cleaned_data.jsonl'
         if os.path.exists(default_path):
-            train_data, dev_data, test_data = load_dataset(default_path)
+            train_data, dev_data, test_data = load_dataset_with_split(default_path)
         else:
             print(f"Error: No data file specified and default {default_path} not found")
             print("Use --data or --train/--dev/--test to specify data files")

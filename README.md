@@ -8,7 +8,7 @@ This project implements multiple deep learning models for Vietnamese Aspect-Base
 
 ### Key Features
 
-- **Multiple Model Architectures**: BiLSTM-CRF and BiLSTM-CRF-XLMR implementations
+- **Multiple Model Architectures**: CRF and BiLSTM-CRF-XLMR implementations
 - **Comprehensive Preprocessing Pipeline**: Text cleaning, emoji removal, teencode normalization
 - **Statistical Analysis Tools**: Jupyter notebook for exploratory data analysis
 - **Interactive Web Demo**: Gradio-based interface for real-time inference
@@ -195,39 +195,55 @@ print(cleaned_text)  # Output: "May nay qua tot! khong co loi gi ca"
 
 ## Model Training
 
-The project supports multiple model architectures. This section focuses on the two main deep learning models.
+The project supports multiple model architectures, from traditional CRF to deep learning models.
 
 ### Configuration
 
 Models are configured via YAML files in the `configs/` directory:
 
 - `configs/data_config.yaml` - Dataset paths and preprocessing settings
-- `configs/bilstm_crf_config.yaml` - BiLSTM-CRF hyperparameters
+- `configs/crf_config.yaml` - CRF hyperparameters and feature settings
 - `configs/bilstm_crf_xlmr_config.yaml` - BiLSTM-CRF-XLMR hyperparameters
 
-### Training BiLSTM-CRF
+### Training CRF (Recommended for Quick Start)
 
-The BiLSTM-CRF model uses syllable and character embeddings without pre-trained transformers.
+The CRF (Conditional Random Fields) model uses traditional feature engineering without deep learning. It's fast, interpretable, and doesn't require a GPU.
 
 ```bash
-python experiments/train.py \
-  --model bilstm_crf \
-  --data-config configs/data_config.yaml \
-  --model-config configs/bilstm_crf_config.yaml \
-  --output-dir outputs/models
+python experiments/train_crf.py \
+  --data cleaned_data/cleaned_data.jsonl \
+  --output outputs/models/crf_model.pkl
 ```
 
 **Configuration Highlights:**
-- Syllable embedding: 100 dimensions
-- Character embedding: 100 dimensions (CNN-based)
-- LSTM hidden size: 400
-- Dropout: 0.33
-- Training epochs: 30
-- Batch size: 32
+- Algorithm: L-BFGS
+- L1 regularization (c1): 0.1
+- L2 regularization (c2): 0.1
+- Max iterations: 200
+- Context window: 2 tokens
+- Features: word shape, prefixes, suffixes, n-grams, context
 
-**Expected Training Time**: ~2-3 hours on GPU
+**Expected Training Time**: ~5 minutes on CPU (no GPU needed!)
 
-### Training BiLSTM-CRF-XLMR
+**Advantages:**
+- Very fast training (5 min vs hours for deep learning)
+- No GPU required
+- Good baseline performance (F1 ~58-62%)
+- Interpretable feature weights
+- Low memory footprint
+
+**Custom Training:**
+```bash
+python experiments/train_crf.py \
+  --data cleaned_data/cleaned_data.jsonl \
+  --c1 0.15 \
+  --c2 0.15 \
+  --max-iter 300 \
+  --context-window 3 \
+  --output outputs/models/crf_custom.pkl
+```
+
+### Training BiLSTM-CRF-XLMR (Advanced)
 
 The BiLSTM-CRF-XLMR model incorporates XLM-RoBERTa contextual embeddings for improved performance.
 
@@ -252,7 +268,7 @@ python experiments/train.py \
 ### Training Output
 
 Models are saved to `outputs/models/`:
-- `bilstm_crf_model.pkl` - BiLSTM-CRF checkpoint
+- `crf_model.pkl` - CRF checkpoint
 - `bilstm_crf_xlmr_model.pkl` - BiLSTM-CRF-XLMR checkpoint
 
 Training logs are saved to `outputs/logs/` with timestamp.
@@ -263,11 +279,11 @@ Evaluate trained models on the test set to measure performance.
 
 ### Running Evaluation
 
-**BiLSTM-CRF:**
+**CRF:**
 ```bash
 python experiments/eval.py \
-  --model bilstm_crf \
-  --checkpoint outputs/models/bilstm_crf_model.pkl \
+  --model crf \
+  --checkpoint outputs/models/crf_model.pkl \
   --data-config configs/data_config.yaml \
   --detailed
 ```
@@ -315,7 +331,7 @@ The demo will start on `http://localhost:7860`. Open this URL in your web browse
 
 ### Demo Features
 
-1. **Model Selection**: Choose between BiLSTM-CRF and BiLSTM-CRF-XLMR
+1. **Model Selection**: Choose between CRF and BiLSTM-CRF-XLMR
 2. **Text Input**: Enter raw Vietnamese text
 3. **Automatic Preprocessing**: Text is cleaned using the preprocessing pipeline
 4. **Aspect Highlighting**: Detected aspects are highlighted with colors
@@ -371,7 +387,7 @@ ABSA/
 │   │   └── tokenizer.py              # Vietnamese tokenization
 │   │
 │   ├── models/                       # Model implementations
-│   │   ├── bilstm_crf.py             # BiLSTM-CRF model
+│   │   ├── crf_model.py              # CRF model (feature-based)
 │   │   ├── bilstm_crf_xlmr.py        # BiLSTM-CRF-XLMR model
 │   │   └── base_model.py             # Base model interface
 │   │
@@ -383,7 +399,7 @@ ABSA/
 │
 ├── experiments/                      # Training and evaluation scripts
 │   ├── train.py                      # Unified training script
-│   ├── train_crf.py                  # CRF-specific training
+│   ├── train_crf.py                  # CRF training script
 │   ├── eval.py                       # Model evaluation script
 │   └── run_all.py                    # Batch training script
 │
@@ -423,16 +439,16 @@ ABSA/
 
 Expected performance on the UIT-ViSD4SA test set:
 
-| Model | Precision | Recall | F1-Score (Macro) | Training Time (GPU) |
-|-------|-----------|--------|------------------|---------------------|
-| BiLSTM-CRF | ~0.58 | ~0.60 | ~0.59 | 2-3 hours |
-| BiLSTM-CRF-XLMR | ~0.61 | ~0.64 | ~0.63 | 4-6 hours |
+| Model | Precision | Recall | F1-Score (Macro) | Training Time | Hardware |
+|-------|-----------|--------|------------------|---------------|----------|
+| CRF | ~0.58 | ~0.60 | ~0.58-0.62 | 5 minutes | CPU |
+| BiLSTM-CRF-XLMR | ~0.61 | ~0.64 | ~0.63 | 4-6 hours | GPU |
 
 
 ### Performance Factors
 
-- **BiLSTM-CRF**: Lightweight, fast training, good for resource-constrained environments
-- **BiLSTM-CRF-XLMR**: Better performance with pre-trained transformers, requires more memory
+- **CRF**: Fast training, no GPU needed, good baseline, interpretable features
+- **BiLSTM-CRF-XLMR**: Best performance with pre-trained transformers, requires GPU and more memory
 
 ## Configuration
 
@@ -464,30 +480,33 @@ output:
 
 ### Model Configuration Examples
 
-**BiLSTM-CRF** (`configs/bilstm_crf_config.yaml`):
+**CRF** (`configs/crf_config.yaml`):
 ```yaml
 model:
-  name: "bilstm-crf"
+  name: "crf"
+  description: "Conditional Random Fields for sequence labeling"
 
-embeddings:
-  syllable_embed_dim: 100
-  char_embed_dim: 100
-  char_num_filters: 100
-  max_word_len: 20
+hyperparameters:
+  algorithm: "lbfgs"
+  c1: 0.1                      # L1 regularization coefficient
+  c2: 0.1                      # L2 regularization coefficient
+  max_iterations: 200
+  all_possible_transitions: true
 
-architecture:
-  lstm_hidden: 400
-  lstm_layers: 2
-  dropout: 0.33
+features:
+  context_window: 2            # Number of tokens before/after to consider
+  use_word_shape: true         # Include word shape features
+  use_prefixes: true           # Include prefix features
+  use_suffixes: true           # Include suffix features
+  prefix_lengths: [1, 2, 3]
+  suffix_lengths: [1, 2, 3]
+  use_ngrams: true
+  use_position: true
 
 training:
-  epochs: 30
-  batch_size: 32
-  learning_rate: 0.001
-  early_stopping_patience: 5
-
-device:
-  use_cuda: true
+  verbose: true
+  show_top_features: 10
+  show_top_transitions: 10
 ```
 
 **BiLSTM-CRF-XLMR** (`configs/bilstm_crf_xlmr_config.yaml`):
@@ -528,44 +547,47 @@ device:
 # 1. Preprocess data
 python scripts/preprocessing.py
 
-# 2. Train model
-python experiments/train.py --model bilstm_crf_xlmr
+# 2. Train CRF model (fast, 5 minutes)
+python experiments/train_crf.py \
+  --data cleaned_data/cleaned_data.jsonl
 
 # 3. Evaluate
 python experiments/eval.py \
-  --model bilstm_crf_xlmr \
-  --checkpoint outputs/models/bilstm_crf_xlmr_model.pkl \
+  --model crf \
+  --checkpoint outputs/models/crf_model.pkl \
   --detailed
 
 # 4. Launch demo
 python demo/app.py
 ```
 
-### Custom Training
+### Advanced Training (BiLSTM-CRF-XLMR)
 
-Train with custom data split:
+Train the deep learning model for better performance:
 
 ```bash
+# Requires GPU
 python experiments/train.py \
   --model bilstm_crf_xlmr \
-  --data cleaned_data/cleaned_data.jsonl \
   --data-config configs/data_config.yaml \
-  --output-dir outputs/custom_models
+  --model-config configs/bilstm_crf_xlmr_config.yaml \
+  --output-dir outputs/models
 ```
 
 ### Inference on New Text
 
+**Using CRF:**
 ```python
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd()))
 
 from scripts.preprocessing import preprocess_text
-from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
+from src.models.crf_model import CRFModel
 
 # Load model
-model = BiLSTMCRFXLMRModel()
-model.load('outputs/models/bilstm_crf_xlmr_model.pkl')
+model = CRFModel()
+model.load('outputs/models/crf_model.pkl')
 
 # Preprocess text
 raw_text = "May nay pin trau, camera dep, nhung gia hoi cao"
@@ -579,6 +601,17 @@ tokens = [word_tokenize(cleaned_text)]
 predictions = model.predict(tokens)
 print(f"Text: {cleaned_text}")
 print(f"Predictions: {predictions[0]}")
+```
+
+**Using BiLSTM-CRF-XLMR:**
+```python
+from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
+
+# Load model
+model = BiLSTMCRFXLMRModel()
+model.load('outputs/models/bilstm_crf_xlmr_model.pkl')
+
+# Same preprocessing and prediction as above
 ```
 
 ### Batch Inference
@@ -606,11 +639,13 @@ for tokens, preds in zip(test_tokens[:5], predictions[:5]):
 
 ### Methodology Reference
 
-The BiLSTM-CRF and BiLSTM-CRF-XLMR implementations are based on the PACLIC 2021 paper methodology:
-- Syllable-level + Character-level embeddings
-- Bidirectional LSTM for sequence encoding
-- CRF layer for structured prediction
-- XLM-RoBERTa for contextual representations (XLMR variant)
+The implementations are based on established sequence labeling methodologies:
+- **CRF**: Traditional feature-based approach with L-BFGS optimization
+- **BiLSTM-CRF-XLMR**: Deep learning approach with:
+  - Syllable-level + Character-level embeddings
+  - Bidirectional LSTM for sequence encoding
+  - CRF layer for structured prediction
+  - XLM-RoBERTa for contextual representations
 
 ## License
 
@@ -637,7 +672,7 @@ pip install --upgrade underthesea
 ```bash
 # Ensure models are trained and saved in outputs/models/
 ls outputs/models/
-# Should see: bilstm_crf_model.pkl, bilstm_crf_xlmr_model.pkl
+# Should see: crf_model.pkl, bilstm_crf_xlmr_model.pkl
 ```
 
 **4. Gradio Port Already in Use**

@@ -4,8 +4,8 @@ Model Manager for Vietnamese ABSA Demo
 Manages loading, caching, and switching between trained models.
 
 Supports:
-- BiLSTM-CRF models (without XLM-R)
-- BiLSTM-CRF-XLMR models (with XLM-R)
+- CRF models (Conditional Random Fields)
+- BiLSTM-CRF-XLMR models (with XLM-RoBERTa)
 
 Features:
 - Singleton pattern for efficient memory usage
@@ -22,7 +22,7 @@ import torch
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.models.bilstm_crf import BiLSTMCRFModel
+from src.models.crf_model import CRFModel
 from src.models.bilstm_crf_xlmr import BiLSTMCRFXLMRModel
 
 
@@ -61,12 +61,14 @@ class ModelManager:
             return []
 
         models = []
+        # Add CRF model
         models.append({
-                'name': 'BiLSTM-CRF',
-                'path': str(self.models_dir / 'bilstm_crf_model.pkl'),
-                'type': 'BiLSTM-CRF'
+                'name': 'CRF',
+                'path': str(self.models_dir / 'crf_model.pkl'),
+                'type': 'CRF'
             })
 
+        # Add BiLSTM-CRF-XLMR model
         models.append({
                 'name': 'BiLSTM-CRF-XLMR',
                 'path': str(self.models_dir / 'bilstm_crf_xlmr_model.pkl'),
@@ -78,10 +80,12 @@ class ModelManager:
         """Detect model type from filename."""
         filename_lower = filename.lower()
 
+        # Check for XLM-R first (more specific)
         if 'xlmr' in filename_lower or 'xlm' in filename_lower:
             return 'BiLSTM-CRF-XLMR'
-        elif 'bilstm' in filename_lower or 'crf' in filename_lower:
-            return 'BiLSTM-CRF'
+        # Check for pure CRF model (crf_model.pkl)
+        elif filename_lower.startswith('crf_model') or filename_lower == 'crf.pkl':
+            return 'CRF'
         else:
             return 'Unknown'
 
@@ -118,11 +122,12 @@ class ModelManager:
 
         # Load appropriate model
         try:
-            if model_type == 'BiLSTM-CRF-XLMR':
+            if model_type == 'CRF':
+                # CRF uses classmethod load()
+                model = CRFModel.load(str(model_path))
+            elif model_type == 'BiLSTM-CRF-XLMR':
+                # BiLSTM-CRF-XLMR uses instance method load()
                 model = BiLSTMCRFXLMRModel()
-                model.load(str(model_path))
-            elif model_type == 'BiLSTM-CRF':
-                model = BiLSTMCRFModel()
                 model.load(str(model_path))
             else:
                 raise ValueError(f"Unknown model type: {model_type}")

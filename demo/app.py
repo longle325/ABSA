@@ -92,9 +92,9 @@ print(f"Found {len(available_models)} models:")
 for model in available_models:
     print(f"  - {model['name']} ({model['type']})")
 
-# Pre-load first 2 models only
+# Pre-load models: CRF and BiLSTM-CRF-XLMR
 print("\nPre-loading models...")
-model_files = ['bilstm_crf_model.pkl', 'bilstm_crf_xlmr_model.pkl']
+model_files = ['crf_model.pkl', 'bilstm_crf_xlmr_model.pkl']
 for i, model_file in enumerate(model_files):
     try:
         print(f"  Loading {model_file}...")
@@ -110,7 +110,7 @@ print("=" * 60)
 model_choices = []
 model_name_to_file = {}
 
-for model_file, model_info in zip(model_files, available_models[:2]):
+for model_file, model_info in zip(model_files, available_models):
     display_name = f"{model_info['name']} ({model_info['type']})"
     model_choices.append(display_name)
     model_name_to_file[display_name] = model_file
